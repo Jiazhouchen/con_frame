@@ -154,11 +154,12 @@ cf_congrurate<-sapply(CF_P,function(x) {(
 
 #Single subject exlusion function:
 exclude_cf<-function(dfx) {
-  p_miss_if<-(length(which(is.na(dfx$FaceResponseText))) / length(dfx$FaceResponseText)) > 0.10
+  p_miss_if<-(length(which(is.na(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)]))) / length(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)])) > 0.10
   #p_comswit_if <- any(dfx$ID %in% names(shark_switchrate[shark_switchrate<0.75]))
   if (!p_miss_if) {return(dfx)} else {return(NULL)}
 }
 
+CF_exclude<-lapply(CF,exclude_cf)
 
 save(CF,file = "cf_behav_data.rdata")
 #Separate single sub proc as a different function for easy editing:
