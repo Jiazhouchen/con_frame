@@ -1,0 +1,7 @@
+﻿ename,norm,normargu,valuefrom,modifier,name,style,comment
+trial,none,NA,PxH,NA,PxH,subset,taskness
+trial,none,NA,PxF,NA,PxF,subset,taskness
+trial,none,NA,PxN,NA,PxN,subset,taskness
+trial,none,NA,UxH,NA,UxH,subset,taskness
+trial,none,NA,UxF,NA,UxF,subset,taskness
+trial,none,NA,UxN,NA,UxN,subset,taskness
