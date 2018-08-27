@@ -34,6 +34,7 @@ require(corrplot)
 library(tidyr)
 library(emmeans)
 
+
 #Define subsets
 df_plac<- subset(df, med_type=='Placebo')
 df_nalt <- subset (df, med_type=='Naltrexone')
