@@ -70,8 +70,17 @@ m_rt_lag <- lmer(1000/RT ~
 summary(m_rt_lag)
 car::Anova(m_rt_lag, type = 'III')
 
+m_rt_base <- lmer(1000/RT ~ 
+                       1/scale(RT_lag) +  ContextNum * EmotionNum * Rating+  
+                       ( 1 | uID/Order) ,
+                     data = df_nalt[!df_nalt$outlier,],
+                     control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+summary(m_rt_base)
+car::Anova(m_rt_base, type = 'III')
+
 m_rt_base_al <- lmer(1000/RT ~ 
-                      1/scale(RT_lag) +  ContextNum * EmotionNum * Resp+  
+                      1/scale(RT_lag) +  Context * Emotion * Resp+  
                       ( 1 | uID/Order) ,
                     data = df_nalt[!df_nalt$outlier,],
                     control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
