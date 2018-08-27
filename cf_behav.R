@@ -158,9 +158,11 @@ cf_congrurate<-sapply(CF_P,function(x) {(
 hist(cf_congrurate)
 #Single subject exlusion function:
 exclude_cf<-function(dfx) {
-  p_miss_if<-(length(which(is.na(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)]))) / length(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)])) > 0.10
+  p_miss_if<-(length(which(is.na(dfx$RT))) / length(dfx$RT)) > 0.202
   #p_comswit_if <- any(dfx$ID %in% names(shark_switchrate[shark_switchrate<0.75]))
-  if (!p_miss_if) {return(dfx)} else {return(NULL)}
+  if (!p_miss_if) {return(dfx)} else {
+    print(unique(dfx$ID))
+    return(NULL)}
 }
 
 CF_exclude<-lapply(CF,exclude_cf)
