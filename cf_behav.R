@@ -46,6 +46,29 @@ proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,beha
       write.csv(cfxz,file.path("compiled_conframe_behavdata.csv"))}
 }
 
+lableVar<-function(dfx) {
+  if (length(grep("if",names(dfx)))>0) {
+  for (jx in grep("if*",names(dfx))) {
+    as.logical(dfx[[jx]])->temp
+    dfx[which(temp),jx]<-gsub("if","",names(dfx)[jx])
+    dfx[which(!temp),jx]<-paste0("Not_",gsub("if","",names(dfx)[jx]))
+  } }
+  return(dfx)
+}
+
+genProbability<-function(dfx,whichone=c('ifRare','ifWon','ifSwitched1','ifSwitched2')) {
+  interaction(dfx[whichone])->interactions
+  prob<-data.frame(
+    p=sapply(attributes(interactions)$levels, function(x) {length(which(interactions==x))/length(interactions)})
+  )
+  for (n in 1:length(whichone)) {
+    prob[whichone[n]]<-sapply(strsplit(rownames(prob),split = ".",fixed = T),"[[",n)
+  }
+  rownames(prob)<-NULL
+  prob$ID<-unique(dfx$ID)
+  return(lableVar(prob))
+}
+
 proc_singlesub_cf<-function(CF) {
   CF_a<-lapply(CF, function(x) {
     x$DRUG<-NA
@@ -66,24 +89,35 @@ proc_singlesub_cf<-function(CF) {
     x$EmotionNum[x$Emotion=='Neutral'] <-1
     x$EmotionNum[x$Emotion=='Fearful'] <-0
     
+    x$ifCongruent<-FALSE
+    x$ifCongruent[x$Context=='Pleasant' & x$Emotion=='Happy'] <-TRUE
+    x$ifCongruent[x$Context=='Unpleasant' & x$Emotion=='Fearful'] <-TRUE
+    
+    x$ifMatchResp<-FALSE
+    x$ifMatchResp[x$Context=='Pleasant' & x$Emotion=='Happy' & x$FaceResponseText=='Positive'] <-TRUE
+    x$ifMatchResp[x$Context=='Unpleasant' & x$Emotion=='Fearful' & x$FaceResponseText=='Negative'] <-TRUE
+    
     x$Rating<-as.factor(x$Rating)
     x$ContextNum<-as.factor(x$ContextNum)
     x$EmotionNum<-as.factor(x$EmotionNum)
-    
+    return(x)
   })
 }
 
+
+
+
 #Do if outlier stuff
-hist(bdf$rts1,1000)
-hist(bdf$rts2,1000)
-
-# missed trials -- 2-3%
-mean(bdf$rts1==0)
-mean(bdf$rts2==0)
-
-bdf$missed <- bdf$rts1==0 | bdf$rts2==0
-bdf$outlier <- bdf$rts1<.2 | bdf$rts2<.2 | bdf$rts1 > 4 | bdf$rts2 > 4
-bdf$outlier_stay <- bdf$rts1<.2 | bdf$rts1 > 4 
+# hist(bdf$rts1,1000)
+# hist(bdf$rts2,1000)
+# 
+# # missed trials -- 2-3%
+# mean(bdf$rts1==0)
+# mean(bdf$rts2==0)
+# 
+# x$missed <- x$rts1==0 | x$rts2==0
+# x$outlier <- x$rts1<.2 | x$rts2<.2 | x$rts1 > 4 | x$rts2 > 4
+# x$outlier_stay <- x$rts1<.2 | x$rts1 > 4 
 
 
 #VIF function
@@ -102,6 +136,28 @@ vif.lme <- function (fit) {
   v }
 
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = "/Volumes/bek/Box Sync",behav.list = T))
+#CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
+CF_P<-lapply(CF, genProbability, whichone = c("Context","Emotion","FaceResponseText"))
+
+
+#Exclude Participant
+CF_P_ALL<-do.call(rbind,CF_P)
+rownames(CF_P_ALL)<-NULL
+
+#This calculate a number of p(congruent respn) / p(incongruent respn)
+cf_congrurate<-sapply(CF_P,function(x) {(
+  (x$p[x$Emotion=="Happy" & x$Context=="Pleasant" & x$FaceResponseText=="Positive"] + x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" & x$FaceResponseText=="Negative"])
+  /
+  (sum(x$p[x$Emotion=="Happy" & x$Context=="Pleasant" ], x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" ]))  
+  )
+  })
+
+#Single subject exlusion function:
+exclude_cf<-function(dfx) {
+  p_miss_if<-(length(which(is.na(dfx$FaceResponseText))) / length(dfx$FaceResponseText)) > 0.10
+  #p_comswit_if <- any(dfx$ID %in% names(shark_switchrate[shark_switchrate<0.75]))
+  if (!p_miss_if) {return(dfx)} else {return(NULL)}
+}
 
 
 save(CF,file = "cf_behav_data.rdata")
