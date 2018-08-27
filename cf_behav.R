@@ -75,27 +75,35 @@ proc_singlesub_cf<-function(CF) {
     x$DRUG[grep("_Plac",x$ID)]<-"Plac"
     x$DRUG[grep("_Nalt",x$ID)]<-"Nalt"
     
+    x$uID<-gsub(pattern = "_Plac",replacement = "",x = x$ID)
+    x$uID<-gsub(pattern = "_Nalt",replacement = "",x = x$uID)
+    x$uID<-as.factor(x$uID)
     #Rename variables
     x$Rating<-NA
     x$Rating[x$FaceResponseText=='Positive'] <-1
     x$Rating[x$FaceResponseText=='Negative'] <-0
+    x$Resp<-as.factor(x$FaceResponseText)
     
     x$ContextNum<-NA
     x$ContextNum[x$Context=='Pleasant'] <-1
     x$ContextNum[x$Context=='Unpleasant'] <-0
+    x$Context<-as.factor(x$Context)
     
     x$EmotionNum<-NA
     x$EmotionNum[x$Emotion=='Happy'] <-2
     x$EmotionNum[x$Emotion=='Neutral'] <-1
     x$EmotionNum[x$Emotion=='Fearful'] <-0
+    x$Emotion<-as.factor(x$Emotion)
     
     x$ifCongruent<-FALSE
     x$ifCongruent[x$Context=='Pleasant' & x$Emotion=='Happy'] <-TRUE
     x$ifCongruent[x$Context=='Unpleasant' & x$Emotion=='Fearful'] <-TRUE
+    x$ifCongruent<-as.factor(x$ifCongruent)
     
     x$ifMatchResp<-FALSE
     x$ifMatchResp[x$Context=='Pleasant' & x$Emotion=='Happy' & x$FaceResponseText=='Positive'] <-TRUE
     x$ifMatchResp[x$Context=='Unpleasant' & x$Emotion=='Fearful' & x$FaceResponseText=='Negative'] <-TRUE
+    x$ifMatchResp<-as.factor(x$ifMatchResp)
     
     x$Rating<-as.factor(x$Rating)
     x$ContextNum<-as.factor(x$ContextNum)
@@ -103,9 +111,12 @@ proc_singlesub_cf<-function(CF) {
     
     
     x$RT<-as.numeric(x$FaceRt)
+    x$RT_lag<-lag(x$RT)
     x$missrate<-as.numeric(table(is.na(x$RT))[2]/sum(table(is.na(x$RT))[1],table(is.na(x$RT))[2]))
     x$misstrial<-as.logical(is.na(x$RT))
     x$outlier <- x$RT<.2 | x$RT > 4 
+    
+    x$Gender<-as.factor(x$Gender)
     
     return(x)
   })
@@ -169,7 +180,7 @@ print(paste0("The overall miss rate of this sample is: ",as.numeric(table(is.na(
 
 
 
-save(CF,file = "cf_behav_data.rdata")
+save(CF,CF_ALL,CF_P,CF_P_ALL,file = "cf_behav_data.rdata")
 #Separate single sub proc as a different function for easy editing:
 
 
