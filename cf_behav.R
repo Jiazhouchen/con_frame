@@ -100,24 +100,16 @@ proc_singlesub_cf<-function(CF) {
     x$Rating<-as.factor(x$Rating)
     x$ContextNum<-as.factor(x$ContextNum)
     x$EmotionNum<-as.factor(x$EmotionNum)
+    
+    
+    x$RT<-as.numeric(x$FaceRt)
+    x$missrate<-as.numeric(table(is.na(x$RT))[2]/sum(table(is.na(x$RT))[1],table(is.na(x$RT))[2]))
+    x$misstrial<-as.logical(is.na(x$RT))
+    x$outlier <- x$RT<.2 | x$RT > 4 
+    
     return(x)
   })
 }
-
-
-
-
-#Do if outlier stuff
-# hist(bdf$rts1,1000)
-# hist(bdf$rts2,1000)
-# 
-# # missed trials -- 2-3%
-# mean(bdf$rts1==0)
-# mean(bdf$rts2==0)
-# 
-# x$missed <- x$rts1==0 | x$rts2==0
-# x$outlier <- x$rts1<.2 | x$rts2<.2 | x$rts1 > 4 | x$rts2 > 4
-# x$outlier_stay <- x$rts1<.2 | x$rts1 > 4 
 
 
 #VIF function
@@ -151,7 +143,8 @@ cf_congrurate<-sapply(CF_P,function(x) {(
   (sum(x$p[x$Emotion=="Happy" & x$Context=="Pleasant" ], x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" ]))  
   )
   })
-
+#Check the distribution of the congurent rate:
+hist(cf_congrurate)
 #Single subject exlusion function:
 exclude_cf<-function(dfx) {
   p_miss_if<-(length(which(is.na(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)]))) / length(x[grep(pattern = "rt$",x = names(dfx),ignore.case = T)])) > 0.10
@@ -160,6 +153,21 @@ exclude_cf<-function(dfx) {
 }
 
 CF_exclude<-lapply(CF,exclude_cf)
+
+CF_ALL<-do.call(rbind,CF)
+rownames(CF_ALL)<-NULL
+
+
+#Do if outlier stuff
+hist(CF_ALL$RT,1000)
+
+
+###2.4% miss rate;
+print(paste0("The overall miss rate of this sample is: ",as.numeric(table(is.na(CF_ALL$RT))[2]/sum(table(is.na(CF_ALL$RT))[1],table(is.na(CF_ALL$RT))[2]))*100," %."))
+
+# x$outlier <- x$rts1<.2 | x$rts2<.2 | x$rts1 > 4 | x$rts2 > 4
+
+
 
 save(CF,file = "cf_behav_data.rdata")
 #Separate single sub proc as a different function for easy editing:
