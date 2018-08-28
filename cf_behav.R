@@ -138,6 +138,12 @@ proc_singlesub_cf<-function(CF) {
     
     x$Gender<-as.factor(x$Gender)
     
+    x$decision<-NA
+    x$decision[x$FaceResponseText=="Positive"]<-0
+    x$decision[x$FaceResponseText=="Negative"]<-1
+    x$decision<-as.numeric(x$decision)
+    
+    
     return(x)
   })
 }
