@@ -54,14 +54,18 @@ car::Anova(m2, "III")
 vif.lme(m2)
 plot(emmeans(m2, ~ ContextNum*EmotionNum), horiz = F)
 
-m3 <- (glmer(Rating ~ Context*EmotionNum + med_type(1|Participant/Order), family=binomial, df))
+m3 <- (glmer(Rating ~ Context*EmotionNum + DRUG+(1|Participant/Order), family=binomial, df))
 summary(m3)
 car::Anova(m3, "III")
 vif.lme(m3)
+#RT model
+m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+scale(RT)+(1|Participant/Order), family=binomial, df))
+summary(m4)
+car::Anova(m4, "III")
 
 ##Mixed-effect RT regression Models:
-
-m_rt_lag <- lmer(1000/RT ~ 
+#RT with lag variable
+m_rt_lag <- lmer(1/scale(RT) ~ 
                     1/scale(RT_lag)+  
                     ( 1 | uID/Order) ,
                   data = df_nalt[!df_nalt$outlier,],
@@ -69,26 +73,63 @@ m_rt_lag <- lmer(1000/RT ~
 )
 summary(m_rt_lag)
 car::Anova(m_rt_lag, type = 'III')
-
-m_rt_base <- lmer(1000/RT ~ 
-                       1/scale(RT_lag) +  ContextNum * EmotionNum * Rating+  
-                       ( 1 | uID/Order) ,
-                     data = df_nalt[!df_nalt$outlier,],
-                     control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+#basic model:
+m_rt_base <- lmer(RT~ 
+                    RT_lag +  ContextNum * EmotionNum * Rating+  
+                    ( 1 | uID/Order) ,
+                  data = df_nalt[!df_nalt$outlier,],
+                  control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
 )
 summary(m_rt_base)
 car::Anova(m_rt_base, type = 'III')
+#Log transformed RT
+m_rt_base_log <- lmer(log(RT)~ 
+                        log(RT) +  ContextNum * EmotionNum * Rating+  
+                    ( 1 | uID/Order) ,
+                  data = df_nalt[!df_nalt$outlier,],
+                  control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+summary(m_rt_base_log)
+car::Anova(m_rt_base_log, type = 'III')
+#Inversed RT
+m_rt_base_inverse <- lmer(1/RT~ 
+                    1/RT_lag +  ContextNum * EmotionNum * Rating+  
+                    ( 1 | uID/Order) ,
+                  data = df_nalt[!df_nalt$outlier,],
+                  control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+summary(m_rt_base_inverse)
+car::Anova(m_rt_base_inverse, type = 'III')
+#Scaled RT
+m_rt_base_scale <- lmer(scale(RT)~ 
+                            scale(RT_lag) +  ContextNum * EmotionNum * Rating+  
+                            ( 1 | uID/Order) ,
+                          data = df_nalt[!df_nalt$outlier,],
+                          control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+summary(m_rt_base_scale)
+car::Anova(m_rt_base_scale, type = 'III')
+#Scaled and inversed RT
+m_rt_base_scale_invs <- lmer((1/scale(RT))~ 
+                          (1/scale(RT_lag)) +  ContextNum * EmotionNum * Rating+  
+                          ( 1 | uID/Order) ,
+                        data = df_nalt[!df_nalt$outlier,],
+                        control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+)
+summary(m_rt_base_scale_invs)
+car::Anova(m_rt_base_scale_invs, type = 'III')
 
-m_rt_base_al <- lmer(1000/RT ~ 
-                      1/scale(RT_lag) +  Context * Emotion * Resp+  
+#Use character factors instead of numbers
+m_rt_base_al <- lmer(1/scale(RT) ~ 
+                      1/scale(RT_lag) +  ContextM * Emotion * Resp+  
                       ( 1 | uID/Order) ,
                     data = df_nalt[!df_nalt$outlier,],
                     control=lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
 )
 summary(m_rt_base_al)
 car::Anova(m_rt_base_al, type = 'III')
-
-m_rt_gender <- lmer(1000/RT ~ 
+#RT basic+gender
+m_rt_gender <- lmer(1/scale(RT) ~ 
                          1/scale(RT_lag) +  Gender * ContextNum * EmotionNum * Resp+  
                          ( 1 | uID/Order) ,
                        data = df_nalt[!df_nalt$outlier,],
@@ -96,9 +137,8 @@ m_rt_gender <- lmer(1000/RT ~
 )
 summary(m_rt_gender)
 car::Anova(m_rt_gender, type = 'III')
-
-
-m_rt_congruent <- lmer(1000/RT ~ 
+#RT with congruency
+m_rt_congruent <- lmer(1/scale(RT) ~ 
                       1/scale(RT_lag) +  ifCongruent +  
                       ( 1 | uID/Order) ,
                     data = df_nalt[!df_nalt$outlier,],
@@ -106,8 +146,8 @@ m_rt_congruent <- lmer(1000/RT ~
 )
 summary(m_rt_congruent)
 car::Anova(m_rt_congruent, type = 'III')
-
-m_rt_matchresp <- lmer(1000/RT ~ 
+#RT with matching responses
+m_rt_matchresp <- lmer(1/scale(RT) ~ 
                          1/scale(RT_lag) +  ifMatchResp +  
                          ( 1 | uID/Order) ,
                        data = df_nalt[!df_nalt$outlier,],

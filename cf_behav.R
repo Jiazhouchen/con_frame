@@ -87,9 +87,9 @@ proc_singlesub_cf<-function(CF) {
     x$ContextNum<-NA
     x$ContextNum[x$Context=='Pleasant'] <-1
     x$ContextNum[x$Context=='Unpleasant'] <-0
-    x$Context<-as.character(x$Context)
-    x$Context[x$Context=="Unpleasant"]<-"0-Unpleasant"
-    x$Context<-as.factor(x$Context)
+    x$ContextM<-as.character(x$Context)
+    x$ContextM[x$ContextM=="Unpleasant"]<-"0-Unpleasant"
+    x$ContextM<-as.factor(x$ContextM)
     
     x$EmotionNum<-NA
     x$EmotionNum[x$Emotion=='Happy'] <-2
@@ -150,14 +150,14 @@ CF_P_ALL<-do.call(rbind,CF_P)
 rownames(CF_P_ALL)<-NULL
 
 #This calculate a number of p(congruent respn) / p(incongruent respn)
-# cf_congrurate<-sapply(CF_P,function(x) {(
-#   (x$p[x$Emotion=="Happy" & x$Context=="Pleasant" & x$FaceResponseText=="Positive"] + x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" & x$FaceResponseText=="Negative"])
-#   /
-#   (sum(x$p[x$Emotion=="Happy" & x$Context=="Pleasant" ], x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" ]))  
-#   )
-#   })
+cf_congrurate<-sapply(CF_P,function(x) {(
+   (x$p[x$Emotion=="Happy" & x$Context=="Pleasant" & x$FaceResponseText=="Positive"] + x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" & x$FaceResponseText=="Negative"])
+   /
+   (sum(x$p[x$Emotion=="Happy" & x$Context=="Pleasant" ], x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" ]))  
+   )
+   })
 #Check the distribution of the congurent rate:
-#hist(cf_congrurate)
+hist(cf_congrurate)
 #Single subject exlusion function:
 exclude_cf<-function(dfx) {
   p_miss_if<-(length(which(is.na(dfx$RT))) / length(dfx$RT)) > 0.202
