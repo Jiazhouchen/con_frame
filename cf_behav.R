@@ -1,6 +1,18 @@
 #Behavioral data processing function;
 
+#To use this script, source it and you shall have a new rdata file saved to your current working directory;
+#The file should contain the following:
+#CF: a list of data.frames that each contains a single subject data; it's useful to apply per subject work 
+#CF_P: a list of data.frames that each contains a single subject's percentage of given condition (pleasant fearful and responded negative)
+#Each of those has a non-list single data.frame merged version (CF_ALL,CF_P_ALL) 
+#proc_singlesub_cf function can be modified to include additional variable or change variable class or naming;
+#exclude_cf function can be modified to exclude subject based on conditions, currently only has miss rate of higher than 20.2%; 
 
+#Change your box dir here: Windows remember to change it to / instead of \
+boxdir<-"/Volumes/bek/Box Sync"
+
+#########FUNCTIONS################
+#Base get behavioral data function:
 proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,behav.df=F,outputdir=NULL) {
   
   if (grepl(" ",boxdir)) {
@@ -45,17 +57,23 @@ proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,beha
   if (!is.null(outputdir)) {
       write.csv(cfxz,file.path("compiled_conframe_behavdata.csv"))}
 }
-
+#Label probability function
 lableVar<-function(dfx) {
   if (length(grep("if",names(dfx)))>0) {
-  for (jx in grep("if*",names(dfx))) {
-    as.logical(dfx[[jx]])->temp
-    dfx[which(temp),jx]<-gsub("if","",names(dfx)[jx])
-    dfx[which(!temp),jx]<-paste0("Not_",gsub("if","",names(dfx)[jx]))
-  } }
+    for (jx in grep("if*",names(dfx))) {
+      as.logical(dfx[[jx]])->temp
+      dfx[which(temp),jx]<-gsub("if","",names(dfx)[jx])
+      dfx[which(!temp),jx]<-paste0("Not_",gsub("if","",names(dfx)[jx]))
+    } }
   return(dfx)
 }
-
+#clean up list function
+cleanuplist<-function(listx){
+  if (any(sapply(listx, is.null))){
+    listx[sapply(listx, is.null)] <- NULL}
+  return(listx)
+}
+#Generate probability function
 genProbability<-function(dfx,whichone=c('ifRare','ifWon','ifSwitched1','ifSwitched2')) {
   interaction(dfx[whichone])->interactions
   prob<-data.frame(
@@ -68,7 +86,7 @@ genProbability<-function(dfx,whichone=c('ifRare','ifWon','ifSwitched1','ifSwitch
   prob$ID<-unique(dfx$ID)
   return(lableVar(prob))
 }
-
+#Processing single subject function
 proc_singlesub_cf<-function(CF) {
   CF_a<-lapply(CF, function(x) {
     x$DRUG<-NA
@@ -123,8 +141,14 @@ proc_singlesub_cf<-function(CF) {
     return(x)
   })
 }
-
-
+#Single subject exlusion function:
+exclude_cf<-function(dfx) {
+  p_miss_if<-(length(which(is.na(dfx$RT))) / length(dfx$RT)) > 0.202
+  #p_comswit_if <- any(dfx$ID %in% names(shark_switchrate[shark_switchrate<0.75]))
+  if (!p_miss_if) {return(dfx)} else {
+    print(unique(dfx$ID))
+    return(NULL)}
+}
 #VIF function
 vif.lme <- function (fit) {
   ## adapted from rms::vif
@@ -139,11 +163,13 @@ vif.lme <- function (fit) {
   v <- diag(solve(v/(d %o% d)))
   names(v) <- nam
   v }
+##########END FUNCTIONS##########
 
-CF<-proc_singlesub_cf(proc_behav_cf(boxdir = "/Volumes/bek/Box Sync",behav.list = T))
+
+#############ACTUAL SCRIPT###########################
+CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
 #CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
 CF_P<-lapply(CF, genProbability, whichone = c("Context","Emotion","FaceResponseText"))
-
 
 #Exclude Participant
 CF_P_ALL<-do.call(rbind,CF_P)
@@ -158,16 +184,11 @@ cf_congrurate<-sapply(CF_P,function(x) {(
    })
 #Check the distribution of the congurent rate:
 hist(cf_congrurate)
-#Single subject exlusion function:
-exclude_cf<-function(dfx) {
-  p_miss_if<-(length(which(is.na(dfx$RT))) / length(dfx$RT)) > 0.202
-  #p_comswit_if <- any(dfx$ID %in% names(shark_switchrate[shark_switchrate<0.75]))
-  if (!p_miss_if) {return(dfx)} else {
-    print(unique(dfx$ID))
-    return(NULL)}
-}
 
-CF_exclude<-lapply(CF,exclude_cf)
+
+CF<-lapply(CF,exclude_cf)
+if (any(sapply(CF, is.null))){
+CF<-CF[sapply(CF, is.null)] <- NULL}
 
 CF_ALL<-do.call(rbind,CF)
 rownames(CF_ALL)<-NULL
@@ -177,12 +198,8 @@ rownames(CF_ALL)<-NULL
 hist(CF_ALL$RT,1000)
 
 
-###2.4% miss rate;
+###print miss rate;
 print(paste0("The overall miss rate of this sample is: ",as.numeric(table(is.na(CF_ALL$RT))[2]/sum(table(is.na(CF_ALL$RT))[1],table(is.na(CF_ALL$RT))[2]))*100," %."))
-
-# x$outlier <- x$rts1<.2 | x$rts2<.2 | x$rts1 > 4 | x$rts2 > 4
-
-
 
 save(CF,CF_ALL,CF_P,CF_P_ALL,file = "cf_behav_data.rdata")
 #Separate single sub proc as a different function for easy editing:
