@@ -225,9 +225,6 @@ pred_ddm1 <- predict(fit_ddm1,
                        nsamples = 500)
 
 save(fit_ddm1, file = "ddm1_fit.rda",compress = "xz")
-save(pred_wiener, file = "ddm1_predictions.rda", compress = "xz")
-
-
-
+save(pred_ddm1, file = "ddm1_predictions.rda", compress = "xz")
 
 
