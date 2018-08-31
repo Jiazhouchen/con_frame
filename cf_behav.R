@@ -13,16 +13,19 @@ boxdir<-"/Volumes/bek/Box Sync"
 
 #########FUNCTIONS################
 #Base get behavioral data function:
-proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,behav.df=F,outputdir=NULL) {
+proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,behav.df=F,outputdir=NULL,inscan=T) {
   
   if (grepl(" ",boxdir)) {
     sub("Box Sync","/'Box Sync/'",boxdir)->boxdir
   }
   #GitHub/SC_task/OutScan_responses
   #Sort data into right format: 
-  datafolder<-file.path(boxdir,"GitHub","SC_task","SC_responses")
+  if (inscan){
+  datafolder<-file.path(boxdir,"GitHub","SC_task","SC_responses")} else {
+  datafolder<-file.path(boxdir,"GitHub","SC_task","OutScan_responses")
+  }
   lfilepath<-system(paste0("find ",datafolder," -name '*.csv' -maxdepth 2 -mindepth 1 -type f"),intern = T)
-  sapply(strsplit(lfilepath,split = "/"), "[[",length(strsplit(lfilepath,split = "/")[[1]])-1)->IDCON
+  IDCON<-sapply(strsplit(lfilepath,split = "/"), "[[",length(strsplit(lfilepath,split = "/")[[1]])-1)
   IDCON<-sub("SC_","_",IDCON)
   split(lfilepath,IDCON)->filexsplit
   tempenvir<-as.environment(list())
@@ -45,11 +48,14 @@ proc_behav_cf<-function(boxdir=NULL,datafolder=NULL,fmriproc=F,behav.list=F,beha
   }
   
   cf_list_x<-lapply(as.list(tempenvir),function(x) {return(x$singlesub)})
-  cfx<-lapply(cf_list_x,function(x) {do.call(rbind,x[which(sapply(x,is.data.frame))])})
-  for (kz in names(cfx)) {
-    cfx[[kz]]$ID<-kz
-
-  }
+  cfx<-lapply(cf_list_x,function(x) {
+    ck<-do.call(rbind,x[which(sapply(x,is.data.frame))])
+    ck$ID<-x$ID_CON
+    return(ck)
+    })
+  #for (kz in names(cfx)) {
+  #  cfx[[kz]]$ID<-kz
+  #}
   cfxz<-do.call(rbind,cfx)
 
   if (fmriproc) {return(as.list(tempenvir))} else if (behav.df) {return(cfxz)} else if (behav.list) {return(cfx)}
@@ -111,8 +117,8 @@ proc_singlesub_cf<-function(CF) {
     
     x$EmotionNum<-NA
     x$EmotionNum[x$Emotion=='Happy'] <-2
-    x$EmotionNum[x$Emotion=='Neutral'] <-1
-    x$EmotionNum[x$Emotion=='Fearful'] <-0
+    x$EmotionNum[x$Emotion=='Neutral'] <-0
+    x$EmotionNum[x$Emotion=='Fearful'] <-1
     x$Emotion<-as.factor(x$Emotion)
     
     x$ifCongruent<-FALSE
@@ -169,17 +175,36 @@ vif.lme <- function (fit) {
   v <- diag(solve(v/(d %o% d)))
   names(v) <- nam
   v }
+#Proc outscanner data:
+proc_outscan_cf<-function(cfo) {
+  uID<-unique(cfo$ID)
+  misslogic<-is.na(cfo$ConditionRt)
+  per_miss<-length(which(misslogic))/length(misslogic)
+  cfo_cen<-cfo[!misslogic,]
+  p_neu<-length(which(cfo_cen$Condition=="neutral"&cfo_cen$ConditionResposne=="1!")) / length(which(cfo_cen$Condition=="neutral"))
+  p_neg<-length(which(cfo_cen$Condition=="negative"&cfo_cen$ConditionResposne=="1!")) / length(which(cfo_cen$Condition=="negative"))
+  p_hap<-length(which(cfo_cen$Condition=="positive"&cfo_cen$ConditionResposne=="1!")) / length(which(cfo_cen$Condition=="positive"))
+  return(data.frame(uID=uID,
+                    per_miss=per_miss,
+                    p_neu=p_neu,
+                    p_neg=p_neg,
+                    p_hap=p_hap))
+}
 ##########END FUNCTIONS##########
 
 
 #############ACTUAL SCRIPT###########################
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
+CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
+
 #CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
 CF_P<-lapply(CF, genProbability, whichone = c("Context","Emotion","FaceResponseText"))
 
 #Exclude Participant
 CF_P_ALL<-do.call(rbind,CF_P)
 rownames(CF_P_ALL)<-NULL
+
+CF_outscan_ALL<-do.call(rbind,CF_outscan)
 
 #This calculate a number of p(congruent respn) / p(incongruent respn)
 cf_congrurate<-sapply(CF_P,function(x) {(
@@ -207,7 +232,7 @@ hist(CF_ALL$RT,1000)
 ###print miss rate;
 print(paste0("The overall miss rate of this sample is: ",as.numeric(table(is.na(CF_ALL$RT))[2]/sum(table(is.na(CF_ALL$RT))[1],table(is.na(CF_ALL$RT))[2]))*100," %."))
 
-save(CF,CF_ALL,CF_P,CF_P_ALL,file = "cf_behav_data.rdata")
+save(CF,CF_ALL,CF_P,CF_P_ALL,CF_outscan,CF_outscan_ALL,file = "cf_behav_data.rdata")
 #Separate single sub proc as a different function for easy editing:
 
 

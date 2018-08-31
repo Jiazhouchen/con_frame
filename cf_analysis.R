@@ -36,7 +36,10 @@ library(emmeans)
 
 load("cf_behav_data.rdata")
 
-df<-CF_ALL
+df<-merge(CF_ALL,CF_outscan_ALL,by = "uID",all = T)
+df$hasoutscan<-FALSE
+df$hasoutscan[which(!is.na(df$per_miss))]<-TRUE
+
 #Define subsets
 df_plac<- subset(df, DRUG=='Plac')
 df_nalt <- subset (df, DRUG=='Nalt')
@@ -70,6 +73,10 @@ car::Anova(m5, "III")
 m2a <- (glmer(Rating ~ ContextNum*EmotionNum + (1|uID/Order), family=binomial, df))
 summary(m2a)
 car::Anova(m2a, "III")
+
+m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+p_neu+scale(RT)+(1|uID/Order), family=binomial, df[which(df$hasoutscan),]))
+summary(m4)
+car::Anova(m4, "III")
 
 ##Mixed-effect RT regression Models:
 #RT with lag variable
@@ -168,11 +175,18 @@ stop("DON'T AUTO RUN FURTHER, BELOW ARE DANGER ZONE")
 ###############DECISION DIFFUSION MODEL ANALYSIS########################
 #Drift rate can be influence by pre decision information and current task manipulation *context and faces
 #boundary separation, starting bias, and non-decision time are only allow to vary by context because participant has no idea walking into what face in a given trial
+save_all <- function() {
+  save.image("recover.rda")
+}
+options(error = save_all)
+
+library(brms)
+
 ddm1 <- bf(RT | dec(decision) ~ 0 + Context:Emotion + 
                 (0 + Context:Emotion|p|ID), 
-              bs ~ 0 +  Context + (0 + Context|p|ID), 
-              ndt ~ 0 +  Context + (0 + Context|p|ID),
-              bias ~ 0 +  Context + (0 + Context|p|ID))
+              bs ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID), 
+              ndt ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID),
+              bias ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID))
 #p is used to do full model random effects
 
 #Non discriminatory priors; no bias, weakly informative
@@ -195,7 +209,7 @@ tmp_dat <- make_standata(ddm1,
                          family = wiener(link_bs = "identity", 
                                          link_ndt = "identity",
                                          link_bias = "identity"),
-                         data = df_nalt[!df_nalt$outlier,], prior = prior1)
+                         data = df[!df$outlier,], prior = prior1)
 #Assign initiation function:
 initfun <- function() {
   list(
@@ -210,8 +224,8 @@ initfun <- function() {
   )
 }
 
-fit_ddm1 <- brm(ddm1, 
-                  data =df_nalt[!df_nalt$outlier,],
+fit_ddm1_all <- brm(ddm1, 
+                  data =df[!df$outlier,],
                   family = wiener(link_bs = "identity", 
                                   link_ndt = "identity",
                                   link_bias = "identity"),
@@ -219,12 +233,20 @@ fit_ddm1 <- brm(ddm1,
                   iter = 1000, warmup = 500, 
                   chains = 4, cores = 4, 
                   control = list(max_treedepth = 15))
-pred_ddm1 <- predict(fit_ddm1, 
+pred_ddm1_all <- predict(fit_ddm1_all, 
                        summary = FALSE, 
                        negative_rt = TRUE, 
                        nsamples = 500)
 
-save(fit_ddm1, file = "ddm1_fit.rda",compress = "xz")
-save(pred_ddm1, file = "ddm1_predictions.rda", compress = "xz")
+save(fit_ddm1_all, file = "ddm1_fit_all.rda",compress = "xz")
+save(pred_ddm1_all, file = "ddm1_predictions_all.rda", compress = "xz")
+
+
+pars <- parnames(fit_ddm1)
+
+plot(fit_ddm1, pars = pars[1:12], N = 12, 
+     ask = FALSE, exact_match = TRUE, newpage = TRUE, plot = TRUE)
+
+
 
 
