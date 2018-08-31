@@ -74,9 +74,13 @@ m2a <- (glmer(Rating ~ ContextNum*EmotionNum + (1|uID/Order), family=binomial, d
 summary(m2a)
 car::Anova(m2a, "III")
 
-m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+p_neu+scale(RT)+(1|uID/Order), family=binomial, df[which(df$hasoutscan),]))
-summary(m4)
-car::Anova(m4, "III")
+m4x <- (glmer(Rating ~ Context*EmotionNum*DRUG+p_neu+scale(RT)+(1|uID/Order), family=binomial, df[which(df$hasoutscan),]))
+summary(m4x)
+car::Anova(m4x, "III")
+
+m4y <- (glmer(Rating ~ Context*EmotionNum+DRUG*Context+DRUG*EmotionNum+p_neu+(1|uID/Order), family=binomial, df[which(df$hasoutscan),]))
+summary(m4y)
+car::Anova(m4y, "III")
 
 ##Mixed-effect RT regression Models:
 #RT with lag variable
