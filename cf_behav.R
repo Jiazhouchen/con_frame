@@ -214,14 +214,36 @@ CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
 CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
 
 CF_P_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F), genProbability, 
-                    condition=c("Condition"),response=c("ConditionResposne"),missresp=NA)
+                    condition=c("Condition"),response=c("ConditionResposne"),missresp="")
+CF_P_outscan_ALL<-do.call(rbind,CF_P_outscan)
 
+CF_P_pos<-CF_P_outscan_ALL[CF_P_outscan_ALL$resp=="7&",]
+
+
+CF_prc2<-lapply(CF, function(x) {
+  x$Emotion<-plyr::mapvalues(x$Emotion,from = c("Happy","Neutral","Fearful"),to = c("positive","neutral","negative"))
+  ID<-as.character(unique(x$uID))
+  print(ID)
+  x$Rating_w_bias<-NA
+  
+  for (emo in unique(CF_P_pos$Condition)) {
+    if (length(CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo])>0) {
+    x$Rating_w_bias[which(tolower(x$Emotion)==emo)]<-as.numeric(as.character(x$Rating[which(tolower(x$Emotion)==emo)])) - CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo]
+    } 
+    # else {
+    #   t<-sample(x = CF_P_pos$p[CF_P_pos$Condition==emo],size = 1)
+    #   x$Rating_w_bias[which(tolower(x$Emotion)==emo)]<-as.numeric(as.character(x$Rating[which(tolower(x$Emotion)==emo)])) - t
+    # }
+  }
+  if (all(is.na(x$Rating_w_bias))){return(NULL)}else{
+    #x$Rating_w_bias<-as.factor(x$Rating_w_bias)
+  return(x)}
+})
+
+df<-do.call(rbind,cleanuplist(CF_prc2))
 #CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
 CF_P<-lapply(CF, genProbability, condition=c("Context","Emotion"),response=c("FaceResponseText"),missresp="NaN")
-CF_P<-lapply(CF_P,function(xz) {
-  
-  
-})
+
 #Exclude Participant
 CF_P_ALL<-do.call(rbind,CF_P)
 rownames(CF_P_ALL)<-NULL
