@@ -80,17 +80,33 @@ cleanuplist<-function(listx){
   return(listx)
 }
 #Generate probability function
-genProbability<-function(dfx,whichone=c('ifRare','ifWon','ifSwitched1','ifSwitched2')) {
-  interaction(dfx[whichone])->interactions
-  prob<-data.frame(
-    p=sapply(attributes(interactions)$levels, function(x) {length(which(interactions==x))/length(interactions)})
-  )
-  for (n in 1:length(whichone)) {
-    prob[whichone[n]]<-sapply(strsplit(rownames(prob),split = ".",fixed = T),"[[",n)
+genProbability<-function(dfx,condition=c("Context","Emotion"),response=c("FaceResponseText"),excludeNA=T,missresp=NA) {
+  if (excludeNA) {
+  if (is.na(missresp)) {
+  dfx<-dfx[which(!is.na(dfx[[response]])),] } else {dfx<-dfx[which(dfx[[response]]!=missresp),]}
   }
-  rownames(prob)<-NULL
-  prob$ID<-unique(dfx$ID)
-  return(lableVar(prob))
+  dfx<-droplevels(dfx)
+  #whichone<-c(condition,response)
+  interaction(dfx[condition])->interactions
+
+  nwx<-do.call(rbind,lapply(attributes(as.factor(dfx[[response]]))$levels, function(resp) {
+    prob<-data.frame(
+    p=sapply(attributes(interactions)$levels, function(x) {
+      ( length(which(as.character(dfx[[response]])==resp & interactions==x)) / length(which(interactions==x)) ) -> px
+      return(px)
+      }),
+    resp=resp)
+    for (n in 1:length(condition)) {
+      prob[condition[n]]<-sapply(strsplit(rownames(prob),split = ".",fixed = T),"[[",n)
+    }
+    rownames(prob)<-NULL
+    prob$ID<-unique(dfx$ID)
+    lableVar(prob)
+  }) )
+  
+  
+
+  return(nwx)
 }
 #Processing single subject function
 proc_singlesub_cf<-function(CF) {
@@ -197,9 +213,15 @@ proc_outscan_cf<-function(cfo) {
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
 CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
 
-#CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
-CF_P<-lapply(CF, genProbability, whichone = c("Context","Emotion","FaceResponseText"))
+CF_P_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F), genProbability, 
+                    condition=c("Condition"),response=c("ConditionResposne"),missresp=NA)
 
+#CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
+CF_P<-lapply(CF, genProbability, condition=c("Context","Emotion"),response=c("FaceResponseText"),missresp="NaN")
+CF_P<-lapply(CF_P,function(xz) {
+  
+  
+})
 #Exclude Participant
 CF_P_ALL<-do.call(rbind,CF_P)
 rownames(CF_P_ALL)<-NULL

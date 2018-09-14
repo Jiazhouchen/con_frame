@@ -187,10 +187,10 @@ options(error = save_all)
 library(brms)
 
 ddm1 <- bf(RT | dec(decision) ~ 0 + Context:Emotion + 
-                (0 + Context:Emotion|p|ID), 
-              bs ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID), 
-              ndt ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID),
-              bias ~ 0 +  Context:Emotion + (0 + Context:Emotion|p|ID))
+                (0 + Context:Emotion|uID|DRUG), 
+              bs ~ 0 +  Context:Emotion + (0 + Context:Emotion|uID|DRUG), 
+              ndt ~ 0 +  Context:Emotion + (0 + Context:Emotion|uID|DRUG),
+              bias ~ 0 +  Context:Emotion + (0 + Context:Emotion|uID|DRUG))
 #p is used to do full model random effects
 
 #Non discriminatory priors; no bias, weakly informative
@@ -228,7 +228,7 @@ initfun <- function() {
   )
 }
 
-fit_ddm1_all <- brm(ddm1, 
+fit_ddm1_all_drug <- brm(ddm1, 
                   data =df[!df$outlier,],
                   family = wiener(link_bs = "identity", 
                                   link_ndt = "identity",
@@ -237,19 +237,50 @@ fit_ddm1_all <- brm(ddm1,
                   iter = 1000, warmup = 500, 
                   chains = 4, cores = 4, 
                   control = list(max_treedepth = 15))
-pred_ddm1_all <- predict(fit_ddm1_all, 
+pred_ddm1_all_drug <- predict(fit_ddm1_all_drug, 
                        summary = FALSE, 
                        negative_rt = TRUE, 
                        nsamples = 500)
 
-save(fit_ddm1_all, file = "ddm1_fit_all.rda",compress = "xz")
-save(pred_ddm1_all, file = "ddm1_predictions_all.rda", compress = "xz")
+save(fit_ddm1_all_drug, file = "ddm1_fit_all_drug.rda",compress = "xz")
+save(pred_ddm1_all_drug, file = "ddm1_predictions_all_drug.rda", compress = "xz")
 
 
 pars <- parnames(fit_ddm1)
 
 plot(fit_ddm1, pars = pars[1:12], N = 12, 
      ask = FALSE, exact_match = TRUE, newpage = TRUE, plot = TRUE)
+
+
+
+as.data.frame(df1)->df2
+
+
+
+#ext$b->test
+#ext$b_bs->test
+#ext$b_ndt->test
+ext$b_bias->test
+
+as.data.frame(test)->test1
+names(test1)<-c("ContextPleasant:EmotionFearful","ContextUnpleasant:EmotionFearful",
+                "ContextPleasant:EmotionHappy","ContextUnpleasant:EmotionHappy",
+                "ContextPleasant:EmotionNeutral","ContextUnpleasant:EmotionNeutral")
+test1$iterations<-seq_along(test1[,1])
+reshape2::melt(test1,id="iterations")->test_melt
+
+test_melt$context<-NA
+test_melt$context[grep("ContextPleasant",test_melt$variable)]<-"Pleasant"
+test_melt$context[grep("ContextUnpleasant",test_melt$variable)]<-"Unpleasant"
+
+test_melt$emotion<-NA
+test_melt$emotion[grep("EmotionHappy",test_melt$variable)]<-"Happy"
+test_melt$emotion[grep("EmotionFearful",test_melt$variable)]<-"Fearful"
+test_melt$emotion[grep("EmotionNeutral",test_melt$variable)]<-"Neutral"
+
+ggplot(test_melt, aes(x=emotion, y=value, fill=context)) + geom_boxplot() + ylab("initial bias")
+
+
 
 
 
