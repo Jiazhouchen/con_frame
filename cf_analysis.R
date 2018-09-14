@@ -57,7 +57,7 @@ car::Anova(m2, "III")
 vif.lme(m2)
 plot(emmeans(m2, ~ ContextNum*EmotionNum), horiz = F)
 
-m3 <- (glmer(Rating ~ Context*EmotionNum+DRUG+(1|Participant/Order), family=binomial, df))
+m3 <- (lmer(Rating_w_bias ~ ContextNum*EmotionNum+DRUG*ContextNum+DRUG*EmotionNum+(1|uID/Order), df))
 summary(m3)
 car::Anova(m3, "III")
 vif.lme(m3)
