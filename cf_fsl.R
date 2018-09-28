@@ -63,3 +63,14 @@ fsl_pipe(argu=argu,
          prep.call.func="prep.confram", #This should be a character string that's the name of the prep proc function
          prep.call.allsub=datalist #List of ID list of arguments for prep.call.
 )
+
+
+
+
+
+
+
+
+
+
+

@@ -61,6 +61,47 @@ m3 <- (lmer(Rating_w_bias ~ ContextNum*EmotionNum+DRUG*ContextNum+DRUG*EmotionNu
 summary(m3)
 car::Anova(m3, "III")
 vif.lme(m3)
+
+m3 <- glmer(Resp ~  Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+           data = df4[which(!df4$misstrial | df4$outlier),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
+summary(m3)
+car::Anova(m3, "III")
+vif.lme(m3)
+
+m3 <- lmer(Rating-(Accuracy-0.5) ~ Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order),
+             data = df4[which(!df4$misstrial | df4$outlier),] , control=lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
+summary(m3)
+car::Anova(m3, "III")
+vif.lme(m3)
+
+
+m3alt <- lmer(p ~ Context*Emotion+Drug*Context+Drug_plac*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+summary(m3alt)
+car::Anova(m3alt, "III")
+vif.lme(m3alt)
+
+m3alt_php<-lmer( (p-Outscan_rate) ~ Context*Emotion*Drug_plac + (1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+summary(m3alt_php)
+car::Anova(m3alt_php, "III")
+vif.lme(m3alt_php)
+plot(effect("Context",m3alt_php), grid=TRUE)
+
+m31fpp<-lmer(p ~ Outscan_rate+Context*Emotion+Drug*Context+Drug*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+
+m31<-lmer(p ~ Outscan_rate+Context*Emotion+Drug*Context+Drug*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+
+m35 <- glmer(Switch ~ Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+            data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
+summary(m35)
+car::Anova(m35, "III")
+vif.lme(m35)
+
+m35 <- glmer(Resp ~ Outscan_Resp+Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+             data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
+summary(m35)
+car::Anova(m35, "III")
+vif.lme(m35)
+
 #RT model
 m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+scale(RT)+(1|Participant/Order), family=binomial, df))
 summary(m4)
@@ -280,7 +321,45 @@ test_melt$emotion[grep("EmotionNeutral",test_melt$variable)]<-"Neutral"
 
 ggplot(test_melt, aes(x=emotion, y=value, fill=context)) + geom_boxplot() + ylab("initial bias")
 
+df<-df[order(df$Participant),]
+condition=c("DRUG","Emotion","Context")
+do.call(rbind,lapply(split(df,df$uID), function(x){
+  ls<-list()
+  
+  for (ix in condition) {
+    for (iz in unique(x[[ix]])){
+      
+    }
+  }
 
+}))
+
+df$R_b_center<-scale((df$Rating_w_bias),center = T)
+ggplot(df,mapping = aes(x=Emotion,y=p,color=Context)) + geom_violin() + facet_wrap( ~resp+Drug, ncol=2)
+
+
+ggplot(df4[which(!df4$misstrial | df4$outlier),],mapping = aes(x=Emotion,y=Rating,color=Context))  + facet_wrap( ~Drug, ncol=2) +
+  stat_summary(fun.y=mean, geom="bar",alpha=0.2) +
+  stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 
+
+data.frame(x=df4$Emotion,y=df4$Rating,y1=df4$Rating,y2=df4$Accuracy)
+
+
+
+atest<-rbind(
+data.frame(trial=1:1000, Rating=rbinom(1000,1,0.5),Emotion="Netural",Accuracy=0.5,Context="Pleasant"),
+data.frame(trial=1001:2000, Rating=rbinom(1000,1,0.85),Emotion="Happy",Accuracy=0.80,Context="Pleasant"),
+data.frame(trial=2001:3000, Rating=rbinom(1000,1,0.25),Emotion="Fearful",Accuracy=0.30,Context="Pleasant"),
+data.frame(trial=1:1000, Rating=rbinom(1000,1,0.35),Emotion="Netural",Accuracy=0.5,Context="Unpleasant"),
+data.frame(trial=1001:2000, Rating=rbinom(1000,1,0.60),Emotion="Happy",Accuracy=0.8,Context="Unpleasant"),
+data.frame(trial=2001:3000, Rating=rbinom(1000,1,0.2),Emotion="Fearful",Accuracy=0.30,Context="Unpleasant")
+)
+
+
+
+ggplot(atest,mapping = aes(x=Emotion,y=Rating - (Accuracy-0.5),color=Context))  +
+  stat_summary(fun.y=mean, geom="bar",alpha=0.2) +
+  stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 
 
 
 

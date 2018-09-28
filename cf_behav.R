@@ -111,9 +111,10 @@ genProbability<-function(dfx,condition=c("Context","Emotion"),response=c("FaceRe
 #Processing single subject function
 proc_singlesub_cf<-function(CF) {
   CF_a<-lapply(CF, function(x) {
-    x$DRUG<-NA
-    x$DRUG[grep("_Plac",x$ID)]<-"Plac"
-    x$DRUG[grep("_Nalt",x$ID)]<-"Nalt"
+    x$Drug<-NA
+    x$Drug[grep("_Plac",x$ID)]<-"Plac"
+    x$Drug[grep("_Nalt",x$ID)]<-"Nalt"
+    x$Drug = factor(x$Drug,levels = c("Plac","Nalt"))
     
     x$uID<-gsub(pattern = "_Plac",replacement = "",x = x$ID)
     x$uID<-gsub(pattern = "_Nalt",replacement = "",x = x$uID)
@@ -122,7 +123,8 @@ proc_singlesub_cf<-function(CF) {
     x$Rating<-NA
     x$Rating[x$FaceResponseText=='Positive'] <-1
     x$Rating[x$FaceResponseText=='Negative'] <-0
-    x$Resp<-as.factor(x$FaceResponseText)
+    x$Rating<-as.numeric(as.character(x$Rating))
+    x$Resp<-factor(x$FaceResponseText,c("Positive","Negative"))
     
     x$ContextNum<-NA
     x$ContextNum[x$Context=='Pleasant'] <-1
@@ -130,12 +132,15 @@ proc_singlesub_cf<-function(CF) {
     x$ContextM<-as.character(x$Context)
     x$ContextM[x$ContextM=="Unpleasant"]<-"0-Unpleasant"
     x$ContextM<-as.factor(x$ContextM)
+    x$Context = factor(x$Context,levels = c("Pleasant","Unpleasant"))
+    
     
     x$EmotionNum<-NA
     x$EmotionNum[x$Emotion=='Happy'] <-2
     x$EmotionNum[x$Emotion=='Neutral'] <-0
     x$EmotionNum[x$Emotion=='Fearful'] <-1
     x$Emotion<-as.factor(x$Emotion)
+    x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
     
     x$ifCongruent<-FALSE
     x$ifCongruent[x$Context=='Pleasant' & x$Emotion=='Happy'] <-TRUE
@@ -147,10 +152,8 @@ proc_singlesub_cf<-function(CF) {
     x$ifMatchResp[x$Context=='Unpleasant' & x$Emotion=='Fearful' & x$FaceResponseText=='Negative'] <-TRUE
     x$ifMatchResp<-as.factor(x$ifMatchResp)
     
-    x$Rating<-as.factor(x$Rating)
     x$ContextNum<-as.factor(x$ContextNum)
     x$EmotionNum<-as.factor(x$EmotionNum)
-    
     
     x$RT<-as.numeric(x$FaceRt)
     x$RT_lag<-lag(x$RT)
@@ -206,69 +209,158 @@ proc_outscan_cf<-function(cfo) {
                     p_neg=p_neg,
                     p_hap=p_hap))
 }
+
+proc2_outscan_cf<-function(cfo) {
+  cfo$uID<-unique(cfo$ID)
+  cfo$RT<-as.numeric(cfo$ConditionRt)
+  cfo$RT_lag<-lag(cfo$RT)
+  cfo$misstrial<-as.logical(is.na(cfo$RT))
+  cfo$outlier <- cfo$RT<.2 | cfo$RT > 4 
+  
+  cfo$Resp<-factor(plyr::mapvalues(cfo$ConditionResposne,from = c("7&","1!"),to = c("Negative","Positive"),warn_missing = F),levels = c("Positive","Negative"))
+  cfo$Emotion<-factor(plyr::mapvalues(cfo$Condition,to = c("Happy","Neutral","Fearful"),from = c("positive","neutral","negative")),levels = c("Neutral","Happy","Fearful"))
+  
+  #cfo$Drug<-"NoDrug"
+  cfo$Context<-"NoContext"
+  
+  cfo$Order<-0
+  
+  #cfo$ID<-paste0(cfo$uID,"_NoDrug")
+  cfo$ID<-cfo$uID
+  
+  cfa<-cfo[names(cfo)[!(names(cfo) %in% c("Participant","Block","Condition","RestImage","ConditionOnset","ConditionResposne","ConditionRt"))]]
+  
+  return(cfa)
+}
 ##########END FUNCTIONS##########
 
+#LISTEN!!!!
+#1! is Positive and 7& is Negative
 
 #############ACTUAL SCRIPT###########################
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
 CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
 
-CF_P_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F), genProbability, 
-                    condition=c("Condition"),response=c("ConditionResposne"),missresp="")
-CF_P_outscan_ALL<-do.call(rbind,CF_P_outscan)
+CF_P_outscan<-lapply(lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc2_outscan_cf), genProbability, 
+                    condition=c("Emotion"),response=c("Resp"),missresp="")
+CF_P_outscan_rbind<-do.call(rbind,CF_P_outscan)
 
-CF_P_pos<-CF_P_outscan_ALL[CF_P_outscan_ALL$resp=="7&",]
 
+CF_outscan_trial<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc2_outscan_cf)
+#CF_P_pos<-CF_P_outscan_ALL[CF_P_outscan_ALL$resp=="7&",]
+CF_outscan_t_all<-do.call(rbind,CF_outscan_trial)
 
 CF_prc2<-lapply(CF, function(x) {
-  x$Emotion<-plyr::mapvalues(x$Emotion,from = c("Happy","Neutral","Fearful"),to = c("positive","neutral","negative"))
   ID<-as.character(unique(x$uID))
   print(ID)
   x$Rating_w_bias<-NA
-  
   for (emo in unique(CF_P_pos$Condition)) {
     if (length(CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo])>0) {
     x$Rating_w_bias[which(tolower(x$Emotion)==emo)]<-as.numeric(as.character(x$Rating[which(tolower(x$Emotion)==emo)])) - CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo]
     } 
-    # else {
-    #   t<-sample(x = CF_P_pos$p[CF_P_pos$Condition==emo],size = 1)
-    #   x$Rating_w_bias[which(tolower(x$Emotion)==emo)]<-as.numeric(as.character(x$Rating[which(tolower(x$Emotion)==emo)])) - t
-    # }
   }
   if (all(is.na(x$Rating_w_bias))){return(NULL)}else{
     #x$Rating_w_bias<-as.factor(x$Rating_w_bias)
   return(x)}
 })
 
-df<-do.call(rbind,cleanuplist(CF_prc2))
-#CF_P<-lapply(CF, genProbability, whichone = c("Context","FaceResponseText"))
-CF_P<-lapply(CF, genProbability, condition=c("Context","Emotion"),response=c("FaceResponseText"),missresp="NaN")
+CF_prc3<-lapply(as.character(unique(df$uID)),function(uID){
+  if (length(unique(df[df$uID==uID,]$DRUG))==2) {
+    df[df$uID==uID,]->dfx
+    return(dfx)
+  } else {return(NULL)}
+})
 
-#Exclude Participant
-CF_P_ALL<-do.call(rbind,CF_P)
+CF_P<-lapply(CF, genProbability, condition=c("Context","Emotion","Run"),response=c("FaceResponseText"),missresp="NaN")
+CF_P_prc<-lapply(CF_P,function(x) {
+  #x<-x[x$resp=="Positive",]
+  x$uID<-gsub(pattern = "_Plac",replacement = "",x = x$ID)
+  x$uID<-gsub(pattern = "_Nalt",replacement = "",x = x$uID)
+  x$uID<-as.factor(x$uID)
+  x$Drug<-NA
+  x$Drug[grep("_Plac",x$ID)]<-"Plac"
+  x$Drug[grep("_Nalt",x$ID)]<-"Nalt"
+  x$Emotion_f <- factor(x$Emotion,levels = c("Fearful","Happy","Neutral"))
+  x$Emotion_h <- factor(x$Emotion,levels = c("Happy","Fearful","Neutral"))
+  x$Drug_plac <- factor(x$Drug,levels = c("Plac","Nalt"))
+  x$Context_p <- factor(x$Context,levels = c("Pleasant","Unpleasant"))
+  x$Emotion <- factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
+  x$Drug <- factor(x$Drug,levels = c("Nalt","Plac"))
+  x$Context <- factor(x$Context,levels = c("Unpleasant","Pleasant"))
+  Emotion<-plyr::mapvalues(x$Emotion,from = c("Happy","Neutral","Fearful"),to = c("positive","neutral","negative"))
+  x$Outscan_rate<-NA
+  #x$resp<-NULL
+  ID<-unique(x$uID)
+  for (emo in unique(CF_P_pos$Condition)) {
+    if (length(CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo])>0) {
+      x$Outscan_rate[which(tolower(Emotion)==emo)]<-CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo]
+    } 
+  }
+  if (all(is.na(x$Outscan_rate))){return(NULL)}else{
+    #x$Rating_w_bias<-as.factor(x$Rating_w_bias)
+    return(x)}
+})
+
+CF_P_ALL<-do.call(rbind,CF_P_prc)
 rownames(CF_P_ALL)<-NULL
 
-CF_outscan_ALL<-do.call(rbind,CF_outscan)
+CF_prc4<-lapply(CF, function(x) {
+  ID<-as.character(unique(x$uID))
+  print(ID)
+  x$Accuracy<-NA
+  CF_df_outscan<-CF_P_outscan_rbind
+  #for (res in unique(CF_df_outscan$resp)) {
+  for (emo in unique(CF_df_outscan$Emotion)) {
+    #res="Positive"
+    if (length(CF_df_outscan$p[CF_df_outscan$ID==ID & CF_df_outscan$Emotion==emo])>0) {
+      #x$Accuracy[which(x$Emotion==emo) & x$Resp==res]<-CF_df_outscan$p[CF_df_outscan$ID==ID & CF_df_outscan$Emotion==emo & CF_df_outscan$resp==res]
+      x$Accuracy[which(x$Emotion==emo)]<-CF_df_outscan$p[CF_df_outscan$ID==ID & CF_df_outscan$Emotion==emo]
+    } 
+  }
+  #}
+  if (all(is.na(x$Accuracy))){return(NULL)}else{
+    #x$Rating_w_bias<-as.factor(x$Rating_w_bias)
+    return(x)}
+})
+
+CF_prc5<-lapply(CF, function(x) {
+  ID<-as.character(unique(x$uID))
+  print(ID)
+  
+  #for (res in unique(CF_df_outscan$resp)) {
+  x$Outscan_Resp<-CF_outscan_t_all[CF_outscan_t_all$ID==ID,]$Resp[match(x$FaceFile,CF_outscan_t_all[CF_outscan_t_all$uID==ID,]$Image)]
+  x$Switch<-as.factor(x$Resp!=x$Outscan_Resp)
+  return(x)
+})
+
+df4<-do.call(rbind,cleanuplist(CF_prc4))
+
+df5<-do.call(rbind,cleanuplist(CF_prc5))
+
+CF_outscan_rbind<-do.call(rbind,CF_outscan)
+
 
 #This calculate a number of p(congruent respn) / p(incongruent respn)
-cf_congrurate<-sapply(CF_P,function(x) {(
-   (x$p[x$Emotion=="Happy" & x$Context=="Pleasant" & x$FaceResponseText=="Positive"] + x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" & x$FaceResponseText=="Negative"])
-   /
-   (sum(x$p[x$Emotion=="Happy" & x$Context=="Pleasant" ], x$p[x$Emotion=="Fearful" & x$Context=="Unpleasant" ]))  
-   )
-   })
-#Check the distribution of the congurent rate:
-hist(cf_congrurate)
-
-
 CF<-lapply(CF,exclude_cf)
 if (any(sapply(CF, is.null))){
 CF<-CF[sapply(CF, is.null)] <- NULL}
 
 CF_ALL<-do.call(rbind,CF)
+CF_ALL$ifOutscan<-F
 rownames(CF_ALL)<-NULL
 
+CF_Outscan_ALL<-do.call(rbind,CF_outscan_trial)
+CF_Outscan_ALL$ifOutscan<-T
+rownames(CF_Outscan_ALL)<-NULL
 
+CF_ALL_wout<-CF_ALL[which(CF_ALL$uID %in% CF_Outscan_ALL$uID),]
+
+df<-merge(CF_ALL_wout,CF_Outscan_ALL,all = T)
+df$Context <- factor(df$Context,levels = c("NoContext","Pleasant","Unpleasant"))
+df$Drug <- factor(df$Drug,levels = c("NoDrug","Plac","Nalt"))
+df$Order <- as.factor(df$Order)
+df$uID <- as.factor(df$uID)
+df$ifOutscan<-as.factor(df$ifOutscan)
 #Do if outlier stuff
 hist(CF_ALL$RT,1000)
 
