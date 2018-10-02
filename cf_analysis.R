@@ -62,7 +62,7 @@ summary(m3)
 car::Anova(m3, "III")
 vif.lme(m3)
 
-m3 <- glmer(Resp ~  Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+m3 <- glmer(Resp ~ Accuracy+ Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
            data = df4[which(!df4$misstrial | df4$outlier),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
 summary(m3)
 car::Anova(m3, "III")
@@ -75,12 +75,12 @@ car::Anova(m3, "III")
 vif.lme(m3)
 
 
-m3alt <- lmer(p ~ Context*Emotion+Drug*Context+Drug_plac*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+m3alt <- lmer(p ~ Outscan_rate+Context*Emotion+Drug*Context+Drug*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
 summary(m3alt)
 car::Anova(m3alt, "III")
 vif.lme(m3alt)
 
-m3alt_php<-lmer( (p-Outscan_rate) ~ Context*Emotion*Drug_plac + (1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
+m3alt_php<-lmer( (p-Outscan_rate) ~ Context*Emotion*Drug + (1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
 summary(m3alt_php)
 car::Anova(m3alt_php, "III")
 vif.lme(m3alt_php)
@@ -90,17 +90,18 @@ m31fpp<-lmer(p ~ Outscan_rate+Context*Emotion+Drug*Context+Drug*Emotion+(1|uID/R
 
 m31<-lmer(p ~ Outscan_rate+Context*Emotion+Drug*Context+Drug*Emotion+(1|uID/Run), CF_P_ALL[CF_P_ALL$resp=="Positive",])
 
-m35 <- glmer(Switch ~ Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+m35 <- glmer(Switch ~ Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
             data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
 summary(m35)
 car::Anova(m35, "III")
 vif.lme(m35)
 
-m35 <- glmer(Resp ~ Outscan_Resp+Context*Emotion+Drug*Emotion+Drug*Context+(1|uID/Order), family=binomial,
+f35a<-Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1|uID)
+m35a <- glmer(Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
              data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),] , control=glmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 1000000)))
-summary(m35)
-car::Anova(m35, "III")
-vif.lme(m35)
+summary(m35a)
+car::Anova(m35a, "III")
+vif.lme(m35a)
 
 #RT model
 m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+scale(RT)+(1|Participant/Order), family=binomial, df))
@@ -362,5 +363,10 @@ ggplot(atest,mapping = aes(x=Emotion,y=Rating - (Accuracy-0.5),color=Context))  
   stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 
 
 
+Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
+data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),]
 
 
+ggplot(df5[which(!df5$misstrial | df5$outlier),],mapping = aes(x=Emotion,y=as.numeric(Resp),color=Emotion))  + facet_wrap( ~Context+Drug, ncol=2) +
+  stat_summary(fun.y=mean, geom="bar",alpha=0.2) +
+  stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 

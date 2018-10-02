@@ -124,7 +124,7 @@ proc_singlesub_cf<-function(CF) {
     x$Rating[x$FaceResponseText=='Positive'] <-1
     x$Rating[x$FaceResponseText=='Negative'] <-0
     x$Rating<-as.numeric(as.character(x$Rating))
-    x$Resp<-factor(x$FaceResponseText,c("Positive","Negative"))
+    x$Resp<-factor(x$FaceResponseText,c("Negative","Positive"))
     
     x$ContextNum<-NA
     x$ContextNum[x$Context=='Pleasant'] <-1
@@ -140,8 +140,8 @@ proc_singlesub_cf<-function(CF) {
     x$EmotionNum[x$Emotion=='Neutral'] <-0
     x$EmotionNum[x$Emotion=='Fearful'] <-1
     x$Emotion<-as.factor(x$Emotion)
-    x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
-    
+    #x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
+    x$Emotion = factor(x$Emotion,levels = c("Fearful","Happy","Neutral"))
     x$ifCongruent<-FALSE
     x$ifCongruent[x$Context=='Pleasant' & x$Emotion=='Happy'] <-TRUE
     x$ifCongruent[x$Context=='Unpleasant' & x$Emotion=='Fearful'] <-TRUE
@@ -217,7 +217,7 @@ proc2_outscan_cf<-function(cfo) {
   cfo$misstrial<-as.logical(is.na(cfo$RT))
   cfo$outlier <- cfo$RT<.2 | cfo$RT > 4 
   
-  cfo$Resp<-factor(plyr::mapvalues(cfo$ConditionResposne,from = c("7&","1!"),to = c("Negative","Positive"),warn_missing = F),levels = c("Positive","Negative"))
+  cfo$Resp<-factor(plyr::mapvalues(cfo$ConditionResposne,from = c("1!","7&"),to = c("Negative","Positive"),warn_missing = F),levels = c("Positive","Negative"))
   cfo$Emotion<-factor(plyr::mapvalues(cfo$Condition,to = c("Happy","Neutral","Fearful"),from = c("positive","neutral","negative")),levels = c("Neutral","Happy","Fearful"))
   
   #cfo$Drug<-"NoDrug"
@@ -235,7 +235,7 @@ proc2_outscan_cf<-function(cfo) {
 ##########END FUNCTIONS##########
 
 #LISTEN!!!!
-#1! is Positive and 7& is Negative
+#1! is Negative and 7& is Positive
 
 #############ACTUAL SCRIPT###########################
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
@@ -245,6 +245,7 @@ CF_P_outscan<-lapply(lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan 
                     condition=c("Emotion"),response=c("Resp"),missresp="")
 CF_P_outscan_rbind<-do.call(rbind,CF_P_outscan)
 
+CF_P_pos<-do.call(rbind,CF_P_outscan)
 
 CF_outscan_trial<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc2_outscan_cf)
 #CF_P_pos<-CF_P_outscan_ALL[CF_P_outscan_ALL$resp=="7&",]
@@ -287,13 +288,13 @@ CF_P_prc<-lapply(CF_P,function(x) {
   x$Emotion <- factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
   x$Drug <- factor(x$Drug,levels = c("Nalt","Plac"))
   x$Context <- factor(x$Context,levels = c("Unpleasant","Pleasant"))
-  Emotion<-plyr::mapvalues(x$Emotion,from = c("Happy","Neutral","Fearful"),to = c("positive","neutral","negative"))
+  #Emotion<-plyr::mapvalues(x$Emotion,from = c("Happy","Neutral","Fearful"),to = c("positive","neutral","negative"))
   x$Outscan_rate<-NA
   #x$resp<-NULL
   ID<-unique(x$uID)
-  for (emo in unique(CF_P_pos$Condition)) {
-    if (length(CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo])>0) {
-      x$Outscan_rate[which(tolower(Emotion)==emo)]<-CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Condition==emo]
+  for (emo in unique(CF_P_pos$Emotion)) {
+    if (length(CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Emotion==emo])>0) {
+      x$Outscan_rate[which(x$Emotion==emo)]<-CF_P_pos$p[CF_P_pos$ID==ID & CF_P_pos$Emotion==emo]
     } 
   }
   if (all(is.na(x$Outscan_rate))){return(NULL)}else{
@@ -306,7 +307,7 @@ rownames(CF_P_ALL)<-NULL
 
 CF_prc4<-lapply(CF, function(x) {
   ID<-as.character(unique(x$uID))
-  print(ID)
+  #print(ID)
   x$Accuracy<-NA
   CF_df_outscan<-CF_P_outscan_rbind
   #for (res in unique(CF_df_outscan$resp)) {
@@ -325,10 +326,16 @@ CF_prc4<-lapply(CF, function(x) {
 
 CF_prc5<-lapply(CF, function(x) {
   ID<-as.character(unique(x$uID))
-  print(ID)
+  #print(ID)
   
   #for (res in unique(CF_df_outscan$resp)) {
   x$Outscan_Resp<-CF_outscan_t_all[CF_outscan_t_all$ID==ID,]$Resp[match(x$FaceFile,CF_outscan_t_all[CF_outscan_t_all$uID==ID,]$Image)]
+  
+  x$Resp_control[x$Outscan_Resp=="Negative" & x$Resp=="Negative"] <- "Neg_Neg"
+  x$Resp_control[x$Outscan_Resp=="Positive" & x$Resp=="Negative"] <- "Pos_Neg"
+  x$Resp_control[x$Outscan_Resp=="Negative" & x$Resp=="Positive"] <- "Neg_Pos"
+  x$Resp_control[x$Outscan_Resp=="Positive" & x$Resp=="Positive"] <- "Pos_Pos"
+  
   x$Switch<-as.factor(x$Resp!=x$Outscan_Resp)
   return(x)
 })
@@ -346,8 +353,10 @@ if (any(sapply(CF, is.null))){
 CF<-CF[sapply(CF, is.null)] <- NULL}
 
 CF_ALL<-do.call(rbind,CF)
+CF_ALL<-CF_ALL[order(CF_ALL$uID),]
 CF_ALL$ifOutscan<-F
 rownames(CF_ALL)<-NULL
+CF_split<-split(CF_ALL,CF_ALL$uID)
 
 CF_Outscan_ALL<-do.call(rbind,CF_outscan_trial)
 CF_Outscan_ALL$ifOutscan<-T
