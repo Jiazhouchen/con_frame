@@ -239,7 +239,16 @@ proc2_outscan_cf<-function(cfo) {
 
 #############ACTUAL SCRIPT###########################
 CF<-proc_singlesub_cf(proc_behav_cf(boxdir = boxdir,behav.list = T))
+CF_ALL<-do.call(rbind,CF)
+CF_ALL<-CF_ALL[order(CF_ALL$uID),]
+CF_ALL$ifOutscan<-F
+rownames(CF_ALL)<-NULL
+CF_split<-split(CF_ALL,CF_ALL$uID)
+
 CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
+CF_Outscan_ALL<-do.call(rbind,CF_outscan_trial)
+CF_Outscan_ALL$ifOutscan<-T
+rownames(CF_Outscan_ALL)<-NULL
 
 CF_P_outscan<-lapply(lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc2_outscan_cf), genProbability, 
                     condition=c("Emotion"),response=c("Resp"),missresp="")
@@ -352,15 +361,9 @@ CF<-lapply(CF,exclude_cf)
 if (any(sapply(CF, is.null))){
 CF<-CF[sapply(CF, is.null)] <- NULL}
 
-CF_ALL<-do.call(rbind,CF)
-CF_ALL<-CF_ALL[order(CF_ALL$uID),]
-CF_ALL$ifOutscan<-F
-rownames(CF_ALL)<-NULL
-CF_split<-split(CF_ALL,CF_ALL$uID)
 
-CF_Outscan_ALL<-do.call(rbind,CF_outscan_trial)
-CF_Outscan_ALL$ifOutscan<-T
-rownames(CF_Outscan_ALL)<-NULL
+
+
 
 CF_ALL_wout<-CF_ALL[which(CF_ALL$uID %in% CF_Outscan_ALL$uID),]
 
