@@ -57,4 +57,4 @@ do.call(rbind,lapply(allids,function(xid){
 }))       
 
 
-
+save(son2_clinical_list,CF_split,CF_outscan,CF_roi_split,file = "cf_alldata.rdata")
