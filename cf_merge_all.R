@@ -39,11 +39,14 @@ son1_clinical$uID<-son1_clinical$SON1_ID
 son2_clinical_list<-split(son2_clinical,son2_clinical$SON2_ID)
 son1_clinical_list<-split(son1_clinical,son1_clinical$SON2_ID)
 
+source("cf_behav.R")
+source("cf_roi.R")
+
 allids<-unique(c(names(son2_clinical_list),names(CF_split),names(CF_outscan),names(CF_roi_split)))
 
 do.call(rbind,lapply(allids,function(xid){
   data.frame(
-  ID=xid,
+  uID=xid,
   Clinical_Nalt= "Nalt" %in%  son2_clinical_list[[xid]]$Drug ,
   Clinical_Plac= "Plac" %in%  son2_clinical_list[[xid]]$Drug ,
   Behavioral_Nalt= "Nalt" %in% unique(CF_split[[xid]]$Drug) ,
