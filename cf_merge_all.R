@@ -44,8 +44,8 @@ source("cf_roi.R")
 
 allids<-unique(c(names(CF_clinical_list),names(CF_split),names(CF_outscan),names(CF_roi_split)))
 
-do.call(rbind,lapply(allids,function(xid){
-  data.frame(
+cf_summary<-do.call(rbind,lapply(allids,function(xid){
+  xk<-data.frame(
   uID=xid,
   Clinical_Nalt= "Nalt" %in%  CF_clinical_list[[xid]]$Drug ,
   Clinical_Plac= "Plac" %in%  CF_clinical_list[[xid]]$Drug ,
@@ -54,7 +54,13 @@ do.call(rbind,lapply(allids,function(xid){
   OutscanBehavioral= !is.null(CF_outscan[[xid]]) ,
   ROI_Nalt= "Nalt" %in% unique(CF_roi_split[[xid]]$Condition) ,
   ROI_Plac= "Plac" %in% unique(CF_roi_split[[xid]]$Condition) )
+  if (any(!xk[2:8])) {
+    xk$all<-F
+  } else {xk$all<-T}
+  return(xk)
 }))       
 
+print(cf_summary)
+print(cf_summary[cf_summary$all,])
 
-save(CF_clinical_list,CF_split,CF_outscan,CF_roi_split,file = "cf_alldata.rdata")
+save(CF_clinical_list,CF_split,CF_outscan,CF_roi_split,file = "cf_alldata.rdata") 
