@@ -80,7 +80,7 @@ cleanuplist<-function(listx){
   return(listx)
 }
 #Generate probability function
-genProbability<-function(dfx,condition=c("Context","Emotion"),response=c("FaceResponseText"),excludeNA=T,missresp=NA) {
+genProbability<-function(dfx,condition=c("Context","Emotion"),response=c("FaceResponseText"),excludeNA=T,missresp=NA,IDvar="ID") {
   if (excludeNA) {
   if (is.na(missresp)) {
   dfx<-dfx[which(!is.na(dfx[[response]])),] } else {dfx<-dfx[which(dfx[[response]]!=missresp),]}
@@ -100,7 +100,7 @@ genProbability<-function(dfx,condition=c("Context","Emotion"),response=c("FaceRe
       prob[condition[n]]<-sapply(strsplit(rownames(prob),split = ".",fixed = T),"[[",n)
     }
     rownames(prob)<-NULL
-    prob$ID<-unique(dfx$ID)
+    prob$ID<-unique(dfx[[IDvar]])
     lableVar(prob)
   }) )
   
@@ -140,8 +140,8 @@ proc_singlesub_cf<-function(CF) {
     x$EmotionNum[x$Emotion=='Neutral'] <-0
     x$EmotionNum[x$Emotion=='Fearful'] <-1
     x$Emotion<-as.factor(x$Emotion)
-    #x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
-    x$Emotion = factor(x$Emotion,levels = c("Fearful","Happy","Neutral"))
+    x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Fearful"))
+    #x$Emotion = factor(x$Emotion,levels = c("Neutral","Happy","Neutral"))
     x$ifCongruent<-FALSE
     x$ifCongruent[x$Context=='Pleasant' & x$Emotion=='Happy'] <-TRUE
     x$ifCongruent[x$Context=='Unpleasant' & x$Emotion=='Fearful'] <-TRUE
@@ -246,6 +246,7 @@ rownames(CF_ALL)<-NULL
 CF_split<-split(CF_ALL,CF_ALL$uID)
 
 CF_outscan<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc_outscan_cf)
+CF_outscan_trial<-lapply(proc_behav_cf(boxdir = boxdir,behav.list = T,inscan = F),proc2_outscan_cf)
 CF_Outscan_ALL<-do.call(rbind,CF_outscan_trial)
 CF_Outscan_ALL$ifOutscan<-T
 rownames(CF_Outscan_ALL)<-NULL
@@ -352,6 +353,10 @@ CF_prc5<-lapply(CF, function(x) {
 df4<-do.call(rbind,cleanuplist(CF_prc4))
 
 df5<-do.call(rbind,cleanuplist(CF_prc5))
+
+df6<-df5
+df6$EmoHapp<-factor(df5$Emotion=="Happy",levels = c("TRUE","FALSE"))
+df6$EmoFear<-factor(df5$Emotion=="Fearful",levels = c("TRUE","FALSE"))
 
 CF_outscan_rbind<-do.call(rbind,CF_outscan)
 

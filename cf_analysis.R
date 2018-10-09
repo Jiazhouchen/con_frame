@@ -102,6 +102,20 @@ m35a <- glmer(Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1
 summary(m35a)
 car::Anova(m35a, "III")
 vif.lme(m35a)
+library(lsmeans)
+ls_m35a <- lsmeans(m35a, "Emotion", by = "Context")
+plot(ls_m35a, horiz = F)
+ls_m35a <- lsmeans(m35a, "Emotion", by = c("Drug","Context"))
+plot(ls_m35a, horiz = F)
+
+ee<-Effect(focal.predictors = c("Emotion","Drug","Context"),mod = m35a)
+ggplot(as.data.frame(ee), aes(x = interaction(Emotion,Context), y = fit, color=Drug)) + geom_point() + 
+  geom_errorbar(aes(ymin=fit-se, ymax=fit+se), width=0.4) + 
+  theme_bw(base_size=12) #+ facet_wrap(~Drug)
+
+
+
+
 
 #RT model
 m4 <- (glmer(Rating ~ Context*EmotionNum*DRUG+scale(RT)+(1|Participant/Order), family=binomial, df))
@@ -363,10 +377,25 @@ ggplot(atest,mapping = aes(x=Emotion,y=Rating - (Accuracy-0.5),color=Context))  
   stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 
 
 
-Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
+#Resp ~ Outscan_Resp + Context*Emotion+Drug*Emotion+Drug*Context+(1|uID), family=binomial,
 data = df5[which(! (df5$misstrial | df5$outlier | is.na(df5$Switch))),]
 
 
 ggplot(df5[which(!df5$misstrial | df5$outlier),],mapping = aes(x=Emotion,y=as.numeric(Resp),color=Emotion))  + facet_wrap( ~Context+Drug, ncol=2) +
   stat_summary(fun.y=mean, geom="bar",alpha=0.2) +
   stat_summary(fun.data = mean_cl_boot,geom="errorbar", width=0.1) 
+
+df5<-df5[order(df5$ID)]
+df5_s<-split(df5,df5$uID)
+df5_p<-lapply(df5_s,genProbability,response = "Resp",
+       condition = c("Context","Emotion","Drug"),excludeNA = T,missresp = NA,IDvar="uID")
+df5_ap<-do.call(rbind,df5_p)
+df5_ap<-df5_ap[df5_ap$resp=="Positive",]
+cf_roi_all<-do.call(rbind,CF_roi_split)
+alldf<-merge(df5_ap,cf_roi_all,by.x = c("ID","Drug"),by.y = c("uID","Drug"),all = T)
+plot(x = na.omit(alldf$p[alldf$Emotion=="Fearful" & alldf$Context=="Pleasant" & alldf$Drug=="Nalt"]-alldf$p[alldf$Emotion=="Neutral" & alldf$Context=="Pleasant" & alldf$Drug=="Nalt"]),
+     y = na.omit( (alldf$p_f.Caudate_L_71[alldf$Emotion=="Fearful" & alldf$Context=="Pleasant" & alldf$Drug=="Nalt"]) -  (alldf$p_n.Caudate_L_71[alldf$Emotion=="Neutral" & alldf$Context=="Pleasant" & alldf$Drug=="Nalt"])) )
+
+plot(x = na.omit(alldf$p[alldf$Emotion=="Happy" & alldf$Context=="Pleasant" & alldf$Drug=="Plac"]-alldf$p[alldf$Emotion=="Happy" & alldf$Context=="Pleasant" & alldf$Drug=="Plac"]),
+     y = na.omit( (alldf$p_h.Caudate_L_71[alldf$Emotion=="Happy" & alldf$Context=="Pleasant" & alldf$Drug=="Plac"]) -  (alldf$p_n.Caudate_L_71[alldf$Emotion=="Happy" & alldf$Context=="Pleasant" & alldf$Drug=="Plac"])) )
+
